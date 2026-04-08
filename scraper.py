@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import sqlite3
 import time
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 BASE_URL = "https://cad.kccda911.org/NewWorld.InmateInquiry/MI3913900"
 DB_FILE = "kalamazoo_jail.db"
@@ -200,10 +200,11 @@ def get_field(soup, css_class):
     return ""
 
 def get_roster_page(page_num):
-    today = date.today().strftime("%m/%d/%Y")
+    today = date.today()
+    week_ago = (today - timedelta(days=7)).strftime("%m/%d/%Y")
     params = {
-        "BookingFromDate": "01/01/2026",
-        "BookingToDate": today,
+        "BookingFromDate": week_ago,
+        "BookingToDate": today.strftime("%m/%d/%Y"),
         "Page": page_num
     }
     r = requests.get(BASE_URL, params=params, headers=HEADERS, timeout=15)
