@@ -2,10 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import sqlite3
 import time
-from datetime import datetime
+from datetime import datetime, date
 
 BASE_URL = "https://cad.kccda911.org/NewWorld.InmateInquiry/MI3913900"
-DB_FILE = "C:\\Users\\kaleb\\jail-scraper\\kalamazoo_jail.db"
+DB_FILE = "kalamazoo_jail.db"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 def init_db():
@@ -41,9 +41,10 @@ def init_db():
     return conn
 
 def get_roster_page(page_num):
+    today = date.today().strftime("%m/%d/%Y")
     params = {
         "BookingFromDate": "01/01/2026",
-        "BookingToDate": "04/07/2026",
+        "BookingToDate": today,
         "Page": page_num
     }
     r = requests.get(BASE_URL, params=params, headers=HEADERS, timeout=15)
