@@ -9,12 +9,9 @@ BASE_URL = "https://cad.kccda911.org/NewWorld.InmateInquiry/MI3913900"
 DB_FILE = "kalamazoo_jail.db"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-# ─── DATABASE SETUP ───────────────────────────────────────────────
-
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS people (
             subject_id      TEXT PRIMARY KEY,
@@ -30,7 +27,6 @@ def init_db():
             total_bookings  INTEGER DEFAULT 0
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS bookings (
             booking_pk          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +42,6 @@ def init_db():
             UNIQUE(subject_id, booking_date)
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS charges (
             charge_pk           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,7 +61,6 @@ def init_db():
             UNIQUE(subject_id, booking_date, charge_number)
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS snapshots (
             snapshot_pk         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,7 +82,6 @@ def init_db():
             avg_days_in_custody REAL
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS daily_presence (
             presence_pk     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,7 +92,6 @@ def init_db():
             UNIQUE(subject_id, snapshot_date)
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS scrape_log (
             log_pk          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,11 +106,8 @@ def init_db():
             notes           TEXT
         )
     """)
-
     conn.commit()
     return conn
-
-# ─── HELPER FUNCTIONS ─────────────────────────────────────────────
 
 def is_homeless(address):
     if not address:
@@ -210,13 +199,10 @@ def get_field(soup, css_class):
             return span.get_text(strip=True)
     return ""
 
-# ─── ROSTER SCRAPING ──────────────────────────────────────────────
-
 def get_roster_page(page_num):
     today = date.today().strftime("%m/%d/%Y")
-    week_ago = (date.today() - __import__('datetime').timedelta(days=7)).strftime("%m/%d/%Y")
     params = {
-        "BookingFromDate": week_ago,
+        "BookingFromDate": "01/01/2026",
         "BookingToDate": today,
         "Page": page_num
     }
@@ -241,26 +227,20 @@ def parse_roster_row(row):
         "housing_facility": cells[5].text.strip() if len(cells) > 5 else ""
     }
 
-# ─── DETAIL PAGE PARSING ──────────────────────────────────────────
-
 def parse_detail_page(href):
     url = "https://cad.kccda911.org" + href
     time.sleep(0.5)
     r = requests.get(url, headers=HEADERS, timeout=15)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
-
     subject_id = href.split("/")[-1]
-
     data = {
         "subject_id": subject_id,
         "age": get_field(soup, "Age"),
         "address": get_field(soup, "Address"),
         "bookings": []
     }
-
     for booking_div in soup.find_all("div", class_="Booking"):
-
         def get_bf(css_class):
             tag = booking_div.find("li", class_=css_class)
             if tag:
@@ -268,8 +248,6 @@ def parse_detail_page(href):
                 if span:
                     return span.get_text(strip=True)
             return ""
-
-        # Bond types from the bond table
         bond_types = []
         bond_table = booking_div.find("div", class_="BookingBonds")
         if bond_table:
@@ -280,7 +258,6 @@ def parse_detail_page(href):
                     if bt and bt != "No data":
                         bond_types.append(bt)
         bond_type_str = ", ".join(bond_types) if bond_types else "None"
-
         booking = {
             "booking_date": get_bf("BookingDate"),
             "housing_facility": get_bf("HousingFacility"),
@@ -289,7 +266,6 @@ def parse_detail_page(href):
             "total_bail_amount": get_bf("TotalBailAmount"),
             "charges": []
         }
-
         charges_div = booking_div.find("div", class_="BookingCharges")
         if charges_div:
             for row in charges_div.find_all("tr")[1:]:
@@ -311,12 +287,8 @@ def parse_detail_page(href):
                         "booking_number": booking_num
                     }
                     booking["charges"].append(charge)
-
         data["bookings"].append(booking)
-
     return data
-
-# ─── DATABASE WRITES ──────────────────────────────────────────────
 
 def save_person(conn, roster_row, detail):
     c = conn.cursor()
@@ -325,7 +297,6 @@ def save_person(conn, roster_row, detail):
     address = detail.get("address", "")
     homeless = 1 if is_homeless(address) else 0
     out_of_county = 1 if is_out_of_county(address) else 0
-
     c.execute("""
         INSERT INTO people
         (subject_id, name, age, gender, race, address,
@@ -339,24 +310,16 @@ def save_person(conn, roster_row, detail):
             is_out_of_county = excluded.is_out_of_county,
             total_bookings = (SELECT COUNT(*) FROM bookings WHERE subject_id = excluded.subject_id)
     """, (
-        subject_id,
-        roster_row["name"],
-        detail.get("age", ""),
-        roster_row["gender"],
-        roster_row["race"],
-        address,
-        homeless,
-        out_of_county,
-        now, now,
+        subject_id, roster_row["name"], detail.get("age", ""),
+        roster_row["gender"], roster_row["race"], address,
+        homeless, out_of_county, now, now,
         len(detail.get("bookings", []))
     ))
-
     for booking in detail.get("bookings", []):
         booking_date = booking["booking_date"]
         booking_number = ""
         if booking["charges"]:
             booking_number = booking["charges"][0].get("booking_number", "")
-
         c.execute("""
             INSERT INTO bookings
             (subject_id, booking_date, housing_facility, bond_type,
@@ -369,17 +332,12 @@ def save_person(conn, roster_row, detail):
                 total_bond_amount = excluded.total_bond_amount,
                 last_updated = excluded.last_updated
         """, (
-            subject_id,
-            booking_date,
-            booking["housing_facility"],
-            booking["bond_type"],
-            booking["total_bond_amount"],
+            subject_id, booking_date, booking["housing_facility"],
+            booking["bond_type"], booking["total_bond_amount"],
             booking["total_bail_amount"],
             1 if roster_row["in_custody"] else 0,
-            booking_number,
-            now
+            booking_number, now
         ))
-
         for charge in booking.get("charges", []):
             c.execute("""
                 INSERT INTO charges
@@ -395,31 +353,20 @@ def save_person(conn, roster_row, detail):
                     sentence_days = excluded.sentence_days,
                     last_updated = excluded.last_updated
             """, (
-                subject_id,
-                booking_date,
-                charge["charge_number"],
-                charge["description"],
-                charge["charge_category"],
-                charge["offense_date"],
-                charge["disposition"],
-                charge["disposition_date"],
-                charge["sentence_length_raw"],
-                charge["sentence_days"],
-                charge["arresting_agency"],
-                charge["booking_number"],
-                now
+                subject_id, booking_date, charge["charge_number"],
+                charge["description"], charge["charge_category"],
+                charge["offense_date"], charge["disposition"],
+                charge["disposition_date"], charge["sentence_length_raw"],
+                charge["sentence_days"], charge["arresting_agency"],
+                charge["booking_number"], now
             ))
-
     conn.commit()
-
-# ─── SNAPSHOT RECORDING ───────────────────────────────────────────
 
 def record_snapshot(conn, all_people_today):
     c = conn.cursor()
     now = datetime.now()
     today = now.strftime("%Y-%m-%d")
     snap_time = now.strftime("%H:%M:%S")
-
     total = len(all_people_today)
     black = sum(1 for p in all_people_today if p["race"] == "Black")
     white = sum(1 for p in all_people_today if p["race"] == "White")
@@ -431,12 +378,9 @@ def record_snapshot(conn, all_people_today):
     homeless = sum(1 for p in all_people_today if p.get("is_homeless", False))
     out_of_county = sum(1 for p in all_people_today if p.get("is_out_of_county", False))
     multiple = sum(1 for p in all_people_today if p.get("multiple_bookings", False))
-
-    # Pretrial = in custody with at least one open charge
     pretrial = 0
     sentenced = 0
     days_list = []
-
     for p in all_people_today:
         subject_id = p["subject_id"]
         c.execute("""
@@ -450,13 +394,10 @@ def record_snapshot(conn, all_people_today):
             pretrial += 1
         else:
             sentenced += 1
-
         d = days_since_booking(p.get("latest_booking_date", ""))
         if d is not None:
             days_list.append(d)
-
     avg_days = round(sum(days_list) / len(days_list), 1) if days_list else 0
-
     c.execute("""
         INSERT INTO snapshots
         (snapshot_date, snapshot_time, total_in_custody,
@@ -476,8 +417,6 @@ def record_snapshot(conn, all_people_today):
         homeless, out_of_county,
         multiple, avg_days
     ))
-
-    # Daily presence
     for p in all_people_today:
         d = days_since_booking(p.get("latest_booking_date", ""))
         c.execute("""
@@ -485,17 +424,13 @@ def record_snapshot(conn, all_people_today):
             (subject_id, snapshot_date, in_custody, days_in_custody)
             VALUES (?, ?, 1, ?)
         """, (p["subject_id"], today, d))
-
     conn.commit()
     print(f"Snapshot recorded: {total} in custody | {pretrial} pretrial | {sentenced} sentenced | avg {avg_days} days")
-
-# ─── MAIN SCRAPE FUNCTION ─────────────────────────────────────────
 
 def scrape():
     start_time = datetime.now()
     print(f"Starting scrape at {start_time}")
     conn = init_db()
-
     total_scraped = 0
     new_people = 0
     new_bookings = 0
@@ -503,7 +438,6 @@ def scrape():
     errors = 0
     page = 1
     all_people_today = []
-
     while True:
         print(f"Fetching roster page {page}...")
         try:
@@ -512,42 +446,31 @@ def scrape():
             print(f"Failed to fetch page {page}: {e}")
             errors += 1
             break
-
         table = soup.find("table")
         if not table:
             print("No table found, stopping.")
             break
-
         rows = table.find_all("tr")[1:]
         if not rows:
             print("No rows found, stopping.")
             break
-
         for row in rows:
             roster_row = parse_roster_row(row)
             if not roster_row or not roster_row["href"]:
                 continue
-
             subject_id = roster_row["href"].split("/")[-1]
-
             try:
                 detail = parse_detail_page(roster_row["href"])
-
-                # Check if person is new
                 c = conn.cursor()
                 c.execute("SELECT subject_id FROM people WHERE subject_id = ?", (subject_id,))
                 is_new = c.fetchone() is None
                 if is_new:
                     new_people += 1
-
                 save_person(conn, roster_row, detail)
                 total_scraped += 1
-
-                # Track for snapshot
                 latest_booking_date = ""
                 if detail.get("bookings"):
                     latest_booking_date = detail["bookings"][0].get("booking_date", "")
-
                 all_people_today.append({
                     "subject_id": subject_id,
                     "race": roster_row["race"],
@@ -557,24 +480,17 @@ def scrape():
                     "is_out_of_county": is_out_of_county(detail.get("address", "")),
                     "latest_booking_date": latest_booking_date
                 })
-
                 print(f"  {'NEW' if is_new else 'UPD'}: {roster_row['name']} | {roster_row['race']} | bookings: {len(detail['bookings'])}")
-
             except Exception as e:
                 print(f"  Error on {roster_row['name']}: {e}")
                 errors += 1
-
         next_link = soup.find("a", string="Next")
         if not next_link:
             break
         page += 1
         time.sleep(1)
-
-    # Record snapshot for this run
     if all_people_today:
         record_snapshot(conn, all_people_today)
-
-    # Log the run
     duration = (datetime.now() - start_time).total_seconds()
     c = conn.cursor()
     c.execute("""
@@ -591,7 +507,6 @@ def scrape():
     ))
     conn.commit()
     conn.close()
-
     print(f"\nDone in {duration:.1f}s. {total_scraped} scraped, {new_people} new, {errors} errors.")
 
 if __name__ == "__main__":
