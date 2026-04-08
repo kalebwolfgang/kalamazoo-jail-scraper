@@ -450,14 +450,22 @@ def scrape():
         if not table:
             print("No table found, stopping.")
             break
+        
+        # --- MODIFICATION 1 START ---
         rows = table.find_all("tr")[1:]
         if not rows:
             print("No rows found, stopping.")
             break
+        
+        valid_rows_this_page = 0  
+        
         for row in rows:
             roster_row = parse_roster_row(row)
             if not roster_row or not roster_row["href"]:
                 continue
+            
+            valid_rows_this_page += 1  
+            
             subject_id = roster_row["href"].split("/")[-1]
             try:
                 detail = parse_detail_page(roster_row["href"])
@@ -484,11 +492,21 @@ def scrape():
             except Exception as e:
                 print(f"  Error on {roster_row['name']}: {e}")
                 errors += 1
-        next_link = soup.find("a", string="Next")
-        if not next_link:
+        
+        if valid_rows_this_page == 0:
+            print("No valid rows on this page, stopping.")
             break
+        # --- MODIFICATION 1 END ---
+
+        # --- MODIFICATION 2 START ---
+        next_link = soup.find("a", string=lambda s: s and "next" in s.lower())
+        if not next_link or page >= 20:  
+            break
+        # --- MODIFICATION 2 END ---
+            
         page += 1
         time.sleep(1)
+        
     if all_people_today:
         record_snapshot(conn, all_people_today)
     duration = (datetime.now() - start_time).total_seconds()
