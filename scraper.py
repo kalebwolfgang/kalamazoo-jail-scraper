@@ -11,10 +11,8 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("DROP TABLE IF EXISTS people")
-    c.execute("DROP TABLE IF EXISTS bookings")
     c.execute("""
-        CREATE TABLE people (
+        CREATE TABLE IF NOT EXISTS people (
             subject_id TEXT PRIMARY KEY,
             name TEXT,
             age TEXT,
@@ -26,7 +24,7 @@ def init_db():
         )
     """)
     c.execute("""
-        CREATE TABLE bookings (
+        CREATE TABLE IF NOT EXISTS bookings (
             subject_id TEXT,
             booking_date TEXT,
             housing_facility TEXT,
@@ -42,8 +40,9 @@ def init_db():
 
 def get_roster_page(page_num):
     today = date.today().strftime("%m/%d/%Y")
+    week_ago = (date.today() - __import__('datetime').timedelta(days=7)).strftime("%m/%d/%Y")
     params = {
-        "BookingFromDate": "01/01/2026",
+        "BookingFromDate": week_ago,
         "BookingToDate": today,
         "Page": page_num
     }
