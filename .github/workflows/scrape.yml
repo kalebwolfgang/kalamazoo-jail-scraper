@@ -2,7 +2,7 @@ name: Daily Jail Scrape
 
 on:
   schedule:
-    - cron: '0 13,1 * * *'
+    - cron: '45 11,23 * * *'
   workflow_dispatch:
 
 jobs:
