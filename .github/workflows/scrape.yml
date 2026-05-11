@@ -21,10 +21,10 @@ jobs:
       - name: Run scraper
         run: python scraper.py
 
-      - name: Commit database
+      - name: Commit database and CSVs
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add kalamazoo_jail.db
-          git diff --staged --quiet || git commit -m "Daily scrape $(date +%Y-%m-%d)"
+          git add kalamazoo_jail.db *.csv
+          git diff --staged --quiet || git commit -m "Daily scrape & CSV update $(date +%Y-%m-%d)"
           git push
