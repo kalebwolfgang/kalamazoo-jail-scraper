@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import sqlite3
 import time
 import re
+import csv
 from datetime import datetime, date, timedelta
 
 BASE_URL = "https://cad.kccda911.org/NewWorld.InmateInquiry/MI3913900"
@@ -428,56 +429,55 @@ def record_snapshot(conn, all_people_today):
     conn.commit()
     print(f"Snapshot recorded: {total} in custody | {pretrial} pretrial | {sentenced} sentenced | avg {avg_days} days")
 
-# --- NEW FUNCTION ADDED HERE ---
-def print_database_insights(conn):
-    print("\n" + "="*55)
-    print(" 📊 REAL-TIME JAIL POPULATION INSIGHTS (ALL-TIME) 📊")
-    print("="*55)
+
+# --- NEW FUNCTION: GENERATE SPREADSHEETS ---
+def generate_spreadsheets(conn):
+    print("\nGenerating clean CSV spreadsheets...")
+    c = conn.cursor()
+
+    # 1. Generate Current Inmates File
     try:
-        c = conn.cursor()
-        print("\n[ MOST COMMON CHARGE CATEGORIES ]")
-        c.execute("SELECT charge_category, COUNT(*) FROM charges GROUP BY charge_category ORDER BY COUNT(*) DESC LIMIT 5")
-        for row in c.fetchall():
-            print(f" • {row[0] if row[0] else 'Uncategorized'}: {row[1]}")
-
-        print("\n[ BAIL & BOND INFO ]")
-        c.execute("SELECT total_bail_amount FROM bookings WHERE total_bail_amount IS NOT NULL")
-        bails = []
-        for row in c.fetchall():
-            val_clean = re.sub(r'[^\d.]', '', str(row[0]))
-            if val_clean:
-                try:
-                    num = float(val_clean)
-                    if num > 0:
-                        bails.append(num)
-                except ValueError:
-                    pass
-        if bails:
-            print(f" • Total Inmates with Bail Set: {len(bails)}")
-            print(f" • Average Bail Amount: ${sum(bails)/len(bails):,.2f}")
-
-        print("\n[ DEMOGRAPHICS: RACE, GENDER, AGE ]")
-        c.execute("SELECT race, COUNT(*) FROM people GROUP BY race ORDER BY COUNT(*) DESC LIMIT 5")
-        race_stats = [f"{r[0] or 'Unknown'} ({r[1]})" for r in c.fetchall()]
-        print(f" • Race: {', '.join(race_stats)}")
-        
-        c.execute("SELECT gender, COUNT(*) FROM people GROUP BY gender ORDER BY COUNT(*) DESC")
-        gender_stats = [f"{r[0] or 'Unknown'} ({r[1]})" for r in c.fetchall()]
-        print(f" • Gender: {', '.join(gender_stats)}")
-
-        c.execute("SELECT age FROM people")
-        ages = [int(r[0]) for r in c.fetchall() if r[0] and str(r[0]).isdigit()]
-        if ages:
-            print(f" • Average Age: {round(sum(ages)/len(ages), 1)} years old")
-
-        print("\n[ TOP REGISTERED ADDRESSES/LOCATIONS ]")
-        c.execute("SELECT address, COUNT(*) FROM people WHERE address != '' AND address IS NOT NULL GROUP BY address ORDER BY COUNT(*) DESC LIMIT 5")
-        for row in c.fetchall():
-            addr = row[0].replace('\n', ', ').replace('\r', '')[:50] 
-            print(f" • {addr}: {row[1]}")
+        with open('current_inmates.csv', 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Name', 'Age', 'Gender', 'Race', 'Address', 'Booking Date', 'Housing Facility', 'Total Bond', 'Total Bail'])
+            c.execute("""
+                SELECT p.name, p.age, p.gender, p.race, p.address,
+                       b.booking_date, b.housing_facility, b.total_bond_amount, b.total_bail_amount
+                FROM people p
+                JOIN bookings b ON p.subject_id = b.subject_id
+                WHERE b.in_custody = 1
+            """)
+            writer.writerows(c.fetchall())
+            print(" -> Created current_inmates.csv")
     except Exception as e:
-        print(f"Could not generate report: {e}")
-    print("\n" + "="*55 + "\n")
+        print(f"Error creating current_inmates.csv: {e}")
+
+    # 2. Generate Daily Demographics Tracking File
+    try:
+        with open('daily_demographics.csv', 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            c.execute("PRAGMA table_info(snapshots)")
+            headers = [row[1] for row in c.fetchall()]
+            writer.writerow(headers)
+            c.execute("SELECT * FROM snapshots ORDER BY snapshot_date ASC")
+            writer.writerows(c.fetchall())
+            print(" -> Created daily_demographics.csv")
+    except Exception as e:
+        print(f"Error creating daily_demographics.csv: {e}")
+
+    # 3. Generate Master Historical File
+    try:
+        with open('all_historical_people.csv', 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            c.execute("PRAGMA table_info(people)")
+            headers = [row[1] for row in c.fetchall()]
+            writer.writerow(headers)
+            c.execute("SELECT * FROM people")
+            writer.writerows(c.fetchall())
+            print(" -> Created all_historical_people.csv")
+    except Exception as e:
+        print(f"Error creating all_historical_people.csv: {e}")
+
 
 def scrape():
     start_time = datetime.now()
@@ -490,6 +490,7 @@ def scrape():
     errors = 0
     page = 1
     all_people_today = []
+    
     while True:
         print(f"Fetching roster page {page}...")
         try:
@@ -500,13 +501,10 @@ def scrape():
             break
         table = soup.find("table")
         if not table:
-            print("No table found, stopping.")
             break
         
-        # --- MODIFICATION 1 START ---
         rows = table.find_all("tr")[1:]
         if not rows:
-            print("No rows found, stopping.")
             break
         
         valid_rows_this_page = 0  
@@ -517,7 +515,6 @@ def scrape():
                 continue
             
             valid_rows_this_page += 1  
-            
             subject_id = roster_row["href"].split("/")[-1]
             try:
                 detail = parse_detail_page(roster_row["href"])
@@ -540,21 +537,15 @@ def scrape():
                     "is_out_of_county": is_out_of_county(detail.get("address", "")),
                     "latest_booking_date": latest_booking_date
                 })
-                print(f"  {'NEW' if is_new else 'UPD'}: {roster_row['name']} | {roster_row['race']} | bookings: {len(detail['bookings'])}")
             except Exception as e:
-                print(f"  Error on {roster_row['name']}: {e}")
                 errors += 1
         
         if valid_rows_this_page == 0:
-            print("No valid rows on this page, stopping.")
             break
-        # --- MODIFICATION 1 END ---
-
-        # --- MODIFICATION 2 START ---
+            
         next_link = soup.find("a", string=lambda s: s and "next" in s.lower())
         if not next_link or page >= 20:  
             break
-        # --- MODIFICATION 2 END ---
             
         page += 1
         time.sleep(1)
@@ -562,6 +553,7 @@ def scrape():
     if all_people_today:
         record_snapshot(conn, all_people_today)
     duration = (datetime.now() - start_time).total_seconds()
+    
     c = conn.cursor()
     c.execute("""
         INSERT INTO scrape_log
@@ -577,8 +569,8 @@ def scrape():
     ))
     conn.commit()
     
-    # --- TRIGGERING THE INSIGHTS FUNCTION BEFORE CLOSING ---
-    print_database_insights(conn)
+    # Trigger the CSV generator right before closing the database!
+    generate_spreadsheets(conn)
     
     conn.close()
     print(f"\nDone in {duration:.1f}s. {total_scraped} scraped, {new_people} new, {errors} errors.")
