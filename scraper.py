@@ -428,6 +428,7 @@ def record_snapshot(conn, all_people_today):
     conn.commit()
     print(f"Snapshot recorded: {total} in custody | {pretrial} pretrial | {sentenced} sentenced | avg {avg_days} days")
 
+# --- NEW FUNCTION ADDED HERE ---
 def print_database_insights(conn):
     print("\n" + "="*55)
     print(" 📊 REAL-TIME JAIL POPULATION INSIGHTS (ALL-TIME) 📊")
@@ -576,6 +577,7 @@ def scrape():
     ))
     conn.commit()
     
+    # --- TRIGGERING THE INSIGHTS FUNCTION BEFORE CLOSING ---
     print_database_insights(conn)
     
     conn.close()
