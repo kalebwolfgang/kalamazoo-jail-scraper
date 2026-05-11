@@ -428,6 +428,56 @@ def record_snapshot(conn, all_people_today):
     conn.commit()
     print(f"Snapshot recorded: {total} in custody | {pretrial} pretrial | {sentenced} sentenced | avg {avg_days} days")
 
+def print_database_insights(conn):
+    print("\n" + "="*55)
+    print(" 📊 REAL-TIME JAIL POPULATION INSIGHTS (ALL-TIME) 📊")
+    print("="*55)
+    try:
+        c = conn.cursor()
+        print("\n[ MOST COMMON CHARGE CATEGORIES ]")
+        c.execute("SELECT charge_category, COUNT(*) FROM charges GROUP BY charge_category ORDER BY COUNT(*) DESC LIMIT 5")
+        for row in c.fetchall():
+            print(f" • {row[0] if row[0] else 'Uncategorized'}: {row[1]}")
+
+        print("\n[ BAIL & BOND INFO ]")
+        c.execute("SELECT total_bail_amount FROM bookings WHERE total_bail_amount IS NOT NULL")
+        bails = []
+        for row in c.fetchall():
+            val_clean = re.sub(r'[^\d.]', '', str(row[0]))
+            if val_clean:
+                try:
+                    num = float(val_clean)
+                    if num > 0:
+                        bails.append(num)
+                except ValueError:
+                    pass
+        if bails:
+            print(f" • Total Inmates with Bail Set: {len(bails)}")
+            print(f" • Average Bail Amount: ${sum(bails)/len(bails):,.2f}")
+
+        print("\n[ DEMOGRAPHICS: RACE, GENDER, AGE ]")
+        c.execute("SELECT race, COUNT(*) FROM people GROUP BY race ORDER BY COUNT(*) DESC LIMIT 5")
+        race_stats = [f"{r[0] or 'Unknown'} ({r[1]})" for r in c.fetchall()]
+        print(f" • Race: {', '.join(race_stats)}")
+        
+        c.execute("SELECT gender, COUNT(*) FROM people GROUP BY gender ORDER BY COUNT(*) DESC")
+        gender_stats = [f"{r[0] or 'Unknown'} ({r[1]})" for r in c.fetchall()]
+        print(f" • Gender: {', '.join(gender_stats)}")
+
+        c.execute("SELECT age FROM people")
+        ages = [int(r[0]) for r in c.fetchall() if r[0] and str(r[0]).isdigit()]
+        if ages:
+            print(f" • Average Age: {round(sum(ages)/len(ages), 1)} years old")
+
+        print("\n[ TOP REGISTERED ADDRESSES/LOCATIONS ]")
+        c.execute("SELECT address, COUNT(*) FROM people WHERE address != '' AND address IS NOT NULL GROUP BY address ORDER BY COUNT(*) DESC LIMIT 5")
+        for row in c.fetchall():
+            addr = row[0].replace('\n', ', ').replace('\r', '')[:50] 
+            print(f" • {addr}: {row[1]}")
+    except Exception as e:
+        print(f"Could not generate report: {e}")
+    print("\n" + "="*55 + "\n")
+
 def scrape():
     start_time = datetime.now()
     print(f"Starting scrape at {start_time}")
