@@ -575,6 +575,9 @@ def scrape():
         errors, duration, ""
     ))
     conn.commit()
+    
+    print_database_insights(conn)
+    
     conn.close()
     print(f"\nDone in {duration:.1f}s. {total_scraped} scraped, {new_people} new, {errors} errors.")
 
