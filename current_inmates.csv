@@ -419,7 +419,6 @@ Name,Age,Gender,Race,Address,Booking Date,Housing Facility,Total Bond,Total Bail
 "WEBSTER, KEVIN PATRICK",57,Male,Unknown,"KALAMAZOO, MICHIGAN 49007",5/21/2026 7:21 PM,Kalamazoo County Jail,"$1,500.00",$0.00
 "WIGINTON, JAMES NORMAN",51,Male,Unknown,"SCHOOLCRAFT, MICHIGAN 49087",5/22/2026 8:32 PM,Kalamazoo County Jail,$0.00,$0.00
 "ASHBY, JONATHAN DAVID",40,Male,White,"KALAMAZOO, MICHIGAN 49004",5/24/2026 9:49 PM,Kalamazoo County Jail,$500.00,$0.00
-"BERNS, BRITTNEY ANN",38,Female,White,"KALAMAZOO, MICHIGAN 49048",5/25/2026 5:27 AM,Kalamazoo County Jail,$500.00,$0.00
 "HOLLY, RAY ALLAN",46,Male,White,,5/25/2026 10:19 PM,Kalamazoo County Jail,"$1,000.00",$0.00
 "TOLIN, JOSHUA ALAN",44,Male,White,"KALAMAZOO, MICHIGAN 49007",5/23/2026 10:59 PM,Kalamazoo County Jail,$500.00,$0.00
 "BRADLEY, JAYANA LEE",39,Female,White,"KALAMAZOO, MICHIGAN 49001",5/22/2026 8:40 PM,Kalamazoo County Jail,"$1,500.00",$0.00
@@ -444,7 +443,9 @@ Name,Age,Gender,Race,Address,Booking Date,Housing Facility,Total Bond,Total Bail
 "RODRIGUEZ, XAVIER",39,Male,Unknown,"BATTLE CREEK, MICHIGAN 49015",5/27/2026 9:40 PM,Kalamazoo County Jail,"$15,000.00",$0.00
 "VIDENIEKS, ALFONS ROMANO Junior",62,Male,White,"KALAMAZOO, MICHIGAN 49001",5/27/2026 11:16 PM,Kalamazoo County Jail,$0.00,$0.00
 "VOISIN, AVIANA JOREY",31,Female,White,"PAW PAW, MICHIGAN 49079",5/29/2026 9:17 AM,Kalamazoo County Jail,$0.00,$0.00
-"CAMP, NOAH JOHN",28,Male,White,MICHIGAN,5/29/2026 8:31 PM,Kalamazoo County Jail,$0.00,$0.00
+"CAMP, NOAH JOHN",28,Male,White,"KALAMAZOO, MICHIGAN 49007",5/29/2026 8:31 PM,Kalamazoo County Jail,$0.00,$0.00
 "FONSECA, NICHOLAS PATRICK",39,Male,White,"KALAMAZOO, MICHIGAN 49048",5/29/2026 12:52 PM,Kalamazoo County Jail,"$2,372.00",$0.00
 "KABONI, COREY ALLEN",45,Male,White,"HOLLAND, MICHIGAN 49423",5/29/2026 10:58 AM,Kalamazoo County Jail,$0.00,$0.00
 "UPTGRAFT, ANDREW JAMES",33,Male,White,"PORTAGE, MICHIGAN 49024",5/29/2026 12:47 PM,Kalamazoo County Jail,$0.00,$0.00
+"GIBBS, CAREEM KESHAWN",31,Female,Black,"KALAMAZOO, MICHIGAN 49009",5/30/2026 5:05 AM,Kalamazoo County Jail,$0.00,$0.00
+"THORNTON, WYLIE KEITH",31,Male,American Indian/Alaskan Native,"KALAMAZOO, MICHIGAN 49001",5/30/2026 12:27 AM,Kalamazoo County Jail,$0.00,$0.00
