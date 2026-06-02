@@ -420,6 +420,7 @@ Name,Age,Gender,Race,Address,Booking Date,Housing Facility,Total Bond,Total Bail
 "HOLLY, RAY ALLAN",46,Male,White,,5/25/2026 10:19 PM,Kalamazoo County Jail,"$1,000.00",$0.00
 "TOLIN, JOSHUA ALAN",44,Male,White,"KALAMAZOO, MICHIGAN 49007",5/23/2026 10:59 PM,Kalamazoo County Jail,$500.00,$0.00
 "BRADLEY, JAYANA LEE",39,Female,White,"KALAMAZOO, MICHIGAN 49001",5/22/2026 8:40 PM,Kalamazoo County Jail,"$1,500.00",$0.00
+"COOMBE, ADAM MICHAEL",36,Male,White,"SOUTH HAVEN, MICHIGAN 49090",5/23/2026 10:19 AM,Kalamazoo County Jail,$0.00,$0.00
 "DOWNING-WEBER, ETHAN PAUL",23,Male,White,"KALAMAZOO, MICHIGAN 49007",5/21/2026 9:19 PM,Kalamazoo County Jail,$0.00,$0.00
 "JOHNSON, ZION ANTHONY",21,Male,Black,"GRAND RAPIDS, MICHIGAN 49507",5/26/2026 8:57 PM,Kalamazoo County Jail,"$25,000.00",$0.00
 "LIVINGSTON, JADEN MICHEAL",19,Male,White,"KALAMAZOO, MICHIGAN 49048",5/24/2026 6:47 PM,Kalamazoo County Jail,$600.00,$0.00
@@ -430,7 +431,7 @@ Name,Age,Gender,Race,Address,Booking Date,Housing Facility,Total Bond,Total Bail
 "SIVLEY, JOSHUA LEE",42,Male,White,"KALAMAZOO, MICHIGAN 49001",5/22/2026 8:07 PM,Kalamazoo County Jail,"$1,000.00",$0.00
 "WALKER, CRYSTAL SHAUNTAL",28,Female,Black,"KALAMAZOO, MICHIGAN 49001",5/25/2026 2:41 PM,Kalamazoo County Jail,$500.00,$0.00
 "WHITE, CLIFFORD  Junior",43,Male,Black,"KALAMAZOO, MICHIGAN 49006",5/26/2026 10:26 PM,Kalamazoo County Jail,$0.00,$0.00
-"BRACKNELL, JAMES SCOTT",60,Male,Unknown,"PORTAGE, MICHIGAN 49024",5/27/2026 4:00 AM,Kalamazoo County Jail,$100.00,$0.00
+"BRACKNELL, JAMES SCOTT",60,Male,Unknown,"PORTAGE, MICHIGAN 49024",5/27/2026 4:00 AM,Kalamazoo County Jail,$0.00,$0.00
 "DRAKE, JESSICA LYNN",42,Female,White,MICHIGAN,5/27/2026 2:42 AM,Kalamazoo County Jail,$350.00,$0.00
 "GRAY, LEROY",56,Male,Black,"KALAMAZOO, MICHIGAN 49048",5/27/2026 8:59 AM,Kalamazoo County Jail,"$2,500.00",$0.00
 "KUIPER, DANIEL DAVID",47,Male,White,"PORTAGE, MICHIGAN 49002",5/27/2026 8:38 PM,Kalamazoo County Jail,$0.00,$0.00
@@ -444,4 +445,10 @@ Name,Age,Gender,Race,Address,Booking Date,Housing Facility,Total Bond,Total Bail
 "THORNTON, WYLIE KEITH",31,Male,American Indian/Alaskan Native,"KALAMAZOO, MICHIGAN 49001",5/30/2026 12:27 AM,Kalamazoo County Jail,$0.00,$0.00
 "MARTIN, PATRICK CHARLES",40,Male,White,"KALAMAZOO, MICHIGAN 49004",5/31/2026 3:16 PM,Kalamazoo County Jail,"$1,000.00",$0.00
 "BINOVA, GABRIELA",47,Female,White,"KALAMAZOO, MICHIGAN 49007",5/29/2026 1:02 AM,Kalamazoo County Jail,$0.00,$0.00
-"RHODES, JOSHUA ALLEN",37,Male,White,,5/28/2026 9:36 PM,Kalamazoo County Jail,$0.00,$0.00
+"COOMBE, ADAM MICHAEL",36,Male,White,"SOUTH HAVEN, MICHIGAN 49090",5/31/2026 10:09 PM,Kalamazoo County Jail,"$1,000.00",$0.00
+"DODD, ARDASHA HAZELLEEN-SHARE",21,Female,Black,"KALAMAZOO, MICHIGAN 49009",6/1/2026 10:44 AM,Kalamazoo County Jail,$100.00,$0.00
+"HUMMEL, ROBERT WILLIAM",48,Male,White,MICHIGAN,5/31/2026 11:38 PM,Kalamazoo County Jail,"$2,100.00",$0.00
+"OSBORN, SHAWN LEE",50,Male,White,"KALAMAZOO, MICHIGAN 49001",5/31/2026 7:28 PM,Kalamazoo County Jail,$175.00,$0.00
+"OVERACKER, CLIFFORD ROBERT",55,Male,White,"Paw Paw, MICHIGAN 49079",5/29/2026 9:35 PM,Kalamazoo County Jail,$250.00,$0.00
+"SAVCHICK, GRAHAM THOMAS",28,Male,White,,5/31/2026 5:27 PM,Kalamazoo County Jail,$675.00,$0.00
+"SPURLOCK, ANDREW JAMES",44,Male,Unknown,,5/29/2026 9:19 PM,Kalamazoo County Jail,$600.00,$0.00
