@@ -61,22 +61,6 @@ def init_db():
         )
     """)
     c.execute("""
-        CREATE TABLE IF NOT EXISTS snapshots (
-            snapshot_pk             INTEGER PRIMARY KEY AUTOINCREMENT,
-            snapshot_date           TEXT,
-            snapshot_time           TEXT,
-            total_in_custody        INTEGER,
-            total_black             INTEGER,
-            total_white             INTEGER,
-            total_hispanic          INTEGER,
-            total_unknown_race      INTEGER,
-            total_other_race        INTEGER,
-            total_male              INTEGER,
-            total_female            INTEGER,
-            total_multiple_bookings INTEGER
-        )
-    """)
-    c.execute("""
         CREATE TABLE IF NOT EXISTS scrape_log (
             log_pk          INTEGER PRIMARY KEY AUTOINCREMENT,
             run_time        TEXT,
@@ -310,44 +294,10 @@ def save_person(conn, roster_row, detail):
             ))
     conn.commit()
 
-def record_snapshot(conn, all_people_today):
-    c = conn.cursor()
-    now = datetime.now()
-    today = now.strftime("%Y-%m-%d")
-    snap_time = now.strftime("%H:%M:%S")
-    total = len(all_people_today)
-    black = sum(1 for p in all_people_today if p["race"] == "Black")
-    white = sum(1 for p in all_people_today if p["race"] == "White")
-    hispanic = sum(1 for p in all_people_today if p["race"] == "Hispanic")
-    unknown = sum(1 for p in all_people_today if p["race"] in ("Unknown", ""))
-    other = total - black - white - hispanic - unknown
-    male = sum(1 for p in all_people_today if p["gender"] == "Male")
-    female = sum(1 for p in all_people_today if p["gender"] == "Female")
-    multiple = sum(1 for p in all_people_today if p.get("multiple_bookings", False))
-    c.execute("""
-        INSERT INTO snapshots
-        (snapshot_date, snapshot_time, total_in_custody,
-         total_black, total_white, total_hispanic,
-         total_unknown_race, total_other_race,
-         total_male, total_female,
-         total_multiple_bookings)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        today, snap_time, total,
-        black, white, hispanic,
-        unknown, other,
-        male, female,
-        multiple
-    ))
-    conn.commit()
-    print(f"Snapshot recorded: {total} in custody | {black} Black | {white} White | {hispanic} Hispanic")
-
 
 def generate_spreadsheets(conn):
-    print("\nGenerating CSV spreadsheets...")
+    print("\nGenerating master CSV...")
     c = conn.cursor()
-
-    # 1. Master spreadsheet: one row per charge, with all person and booking data joined in
     try:
         with open('jail_master.csv', 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -383,19 +333,6 @@ def generate_spreadsheets(conn):
     except Exception as e:
         print(f"Error creating jail_master.csv: {e}")
 
-    # 2. Daily demographics: time series of the jail population composition
-    try:
-        with open('daily_demographics.csv', 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            c.execute("PRAGMA table_info(snapshots)")
-            headers = [row[1] for row in c.fetchall()]
-            writer.writerow(headers)
-            c.execute("SELECT * FROM snapshots ORDER BY snapshot_date ASC")
-            writer.writerows(c.fetchall())
-            print(" -> Created daily_demographics.csv")
-    except Exception as e:
-        print(f"Error creating daily_demographics.csv: {e}")
-
 
 def scrape():
     start_time = datetime.now()
@@ -407,7 +344,6 @@ def scrape():
     updated_charges = 0
     errors = 0
     page = 1
-    all_people_today = []
 
     while True:
         print(f"Fetching roster page {page}...")
@@ -443,12 +379,6 @@ def scrape():
                     new_people += 1
                 save_person(conn, roster_row, detail)
                 total_scraped += 1
-                all_people_today.append({
-                    "subject_id": subject_id,
-                    "race": roster_row["race"],
-                    "gender": roster_row["gender"],
-                    "multiple_bookings": roster_row["multiple_bookings"]
-                })
             except Exception as e:
                 errors += 1
 
@@ -462,8 +392,6 @@ def scrape():
         page += 1
         time.sleep(1)
 
-    if all_people_today:
-        record_snapshot(conn, all_people_today)
     duration = (datetime.now() - start_time).total_seconds()
 
     c = conn.cursor()
