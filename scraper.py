@@ -21,8 +21,6 @@ def init_db():
             gender          TEXT,
             race            TEXT,
             address         TEXT,
-            is_homeless     INTEGER DEFAULT 0,
-            is_out_of_county INTEGER DEFAULT 0,
             first_seen      TEXT,
             last_seen       TEXT,
             total_bookings  INTEGER DEFAULT 0
@@ -64,33 +62,18 @@ def init_db():
     """)
     c.execute("""
         CREATE TABLE IF NOT EXISTS snapshots (
-            snapshot_pk         INTEGER PRIMARY KEY AUTOINCREMENT,
-            snapshot_date       TEXT,
-            snapshot_time       TEXT,
-            total_in_custody    INTEGER,
-            total_black         INTEGER,
-            total_white         INTEGER,
-            total_hispanic      INTEGER,
-            total_unknown_race  INTEGER,
-            total_other_race    INTEGER,
-            total_male          INTEGER,
-            total_female        INTEGER,
-            total_pretrial      INTEGER,
-            total_sentenced     INTEGER,
-            total_homeless      INTEGER,
-            total_out_of_county INTEGER,
-            total_multiple_bookings INTEGER,
-            avg_days_in_custody REAL
-        )
-    """)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS daily_presence (
-            presence_pk     INTEGER PRIMARY KEY AUTOINCREMENT,
-            subject_id      TEXT,
-            snapshot_date   TEXT,
-            in_custody      INTEGER,
-            days_in_custody INTEGER,
-            UNIQUE(subject_id, snapshot_date)
+            snapshot_pk             INTEGER PRIMARY KEY AUTOINCREMENT,
+            snapshot_date           TEXT,
+            snapshot_time           TEXT,
+            total_in_custody        INTEGER,
+            total_black             INTEGER,
+            total_white             INTEGER,
+            total_hispanic          INTEGER,
+            total_unknown_race      INTEGER,
+            total_other_race        INTEGER,
+            total_male              INTEGER,
+            total_female            INTEGER,
+            total_multiple_bookings INTEGER
         )
     """)
     c.execute("""
@@ -109,29 +92,6 @@ def init_db():
     """)
     conn.commit()
     return conn
-
-def is_homeless(address):
-    if not address:
-        return True
-    address = address.strip()
-    if address == "":
-        return True
-    if address == "MICHIGAN":
-        return True
-    if "49048" in address:
-        return True
-    return False
-
-def is_out_of_county(address):
-    if not address or is_homeless(address):
-        return False
-    kalamazoo_cities = [
-        "KALAMAZOO", "PORTAGE", "GALESBURG", "RICHLAND",
-        "VICKSBURG", "SCHOOLCRAFT", "PARCHMENT", "COMSTOCK",
-        "CLIMAX", "PAVILION", "TEXAS", "OSHTEMO", "COOPER"
-    ]
-    address_upper = address.upper()
-    return not any(city in address_upper for city in kalamazoo_cities)
 
 def categorize_charge(description):
     desc = description.lower()
@@ -181,16 +141,6 @@ def parse_sentence_days(sentence_str):
     except:
         return None
     return None
-
-def days_since_booking(booking_date_str):
-    if not booking_date_str:
-        return None
-    try:
-        parts = booking_date_str.split(' ')[0]
-        booked = datetime.strptime(parts, '%m/%d/%Y')
-        return (datetime.now() - booked).days
-    except:
-        return None
 
 def get_field(soup, css_class):
     tag = soup.find("li", class_=css_class)
@@ -297,24 +247,20 @@ def save_person(conn, roster_row, detail):
     now = datetime.now().isoformat()
     subject_id = detail["subject_id"]
     address = detail.get("address", "")
-    homeless = 1 if is_homeless(address) else 0
-    out_of_county = 1 if is_out_of_county(address) else 0
     c.execute("""
         INSERT INTO people
         (subject_id, name, age, gender, race, address,
-         is_homeless, is_out_of_county, first_seen, last_seen, total_bookings)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         first_seen, last_seen, total_bookings)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(subject_id) DO UPDATE SET
             last_seen = excluded.last_seen,
             age = excluded.age,
             address = excluded.address,
-            is_homeless = excluded.is_homeless,
-            is_out_of_county = excluded.is_out_of_county,
             total_bookings = (SELECT COUNT(*) FROM bookings WHERE subject_id = excluded.subject_id)
     """, (
         subject_id, roster_row["name"], detail.get("age", ""),
         roster_row["gender"], roster_row["race"], address,
-        homeless, out_of_county, now, now,
+        now, now,
         len(detail.get("bookings", []))
     ))
     for booking in detail.get("bookings", []):
@@ -377,82 +323,67 @@ def record_snapshot(conn, all_people_today):
     other = total - black - white - hispanic - unknown
     male = sum(1 for p in all_people_today if p["gender"] == "Male")
     female = sum(1 for p in all_people_today if p["gender"] == "Female")
-    homeless = sum(1 for p in all_people_today if p.get("is_homeless", False))
-    out_of_county = sum(1 for p in all_people_today if p.get("is_out_of_county", False))
     multiple = sum(1 for p in all_people_today if p.get("multiple_bookings", False))
-    pretrial = 0
-    sentenced = 0
-    days_list = []
-    for p in all_people_today:
-        subject_id = p["subject_id"]
-        c.execute("""
-            SELECT disposition FROM charges
-            WHERE subject_id = ?
-            ORDER BY booking_date DESC
-        """, (subject_id,))
-        charge_disps = [r[0] for r in c.fetchall()]
-        has_open = any(d == "" or d is None for d in charge_disps)
-        if has_open:
-            pretrial += 1
-        else:
-            sentenced += 1
-        d = days_since_booking(p.get("latest_booking_date", ""))
-        if d is not None:
-            days_list.append(d)
-    avg_days = round(sum(days_list) / len(days_list), 1) if days_list else 0
     c.execute("""
         INSERT INTO snapshots
         (snapshot_date, snapshot_time, total_in_custody,
          total_black, total_white, total_hispanic,
          total_unknown_race, total_other_race,
          total_male, total_female,
-         total_pretrial, total_sentenced,
-         total_homeless, total_out_of_county,
-         total_multiple_bookings, avg_days_in_custody)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         total_multiple_bookings)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         today, snap_time, total,
         black, white, hispanic,
         unknown, other,
         male, female,
-        pretrial, sentenced,
-        homeless, out_of_county,
-        multiple, avg_days
+        multiple
     ))
-    for p in all_people_today:
-        d = days_since_booking(p.get("latest_booking_date", ""))
-        c.execute("""
-            INSERT OR IGNORE INTO daily_presence
-            (subject_id, snapshot_date, in_custody, days_in_custody)
-            VALUES (?, ?, 1, ?)
-        """, (p["subject_id"], today, d))
     conn.commit()
-    print(f"Snapshot recorded: {total} in custody | {pretrial} pretrial | {sentenced} sentenced | avg {avg_days} days")
+    print(f"Snapshot recorded: {total} in custody | {black} Black | {white} White | {hispanic} Hispanic")
 
 
-# --- NEW FUNCTION: GENERATE SPREADSHEETS ---
 def generate_spreadsheets(conn):
-    print("\nGenerating clean CSV spreadsheets...")
+    print("\nGenerating CSV spreadsheets...")
     c = conn.cursor()
 
-    # 1. Generate Current Inmates File
+    # 1. Master spreadsheet: one row per charge, with all person and booking data joined in
     try:
-        with open('current_inmates.csv', 'w', newline='', encoding='utf-8') as f:
+        with open('jail_master.csv', 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['Name', 'Age', 'Gender', 'Race', 'Address', 'Booking Date', 'Housing Facility', 'Total Bond', 'Total Bail'])
+            writer.writerow([
+                'subject_id', 'name', 'age', 'gender', 'race', 'address',
+                'first_seen', 'last_seen', 'total_bookings',
+                'booking_date', 'housing_facility', 'bond_type',
+                'total_bond_amount', 'total_bail_amount', 'in_custody',
+                'booking_number',
+                'charge_number', 'charge_description', 'charge_category',
+                'offense_date', 'disposition', 'disposition_date',
+                'sentence_length_raw', 'sentence_days', 'arresting_agency'
+            ])
             c.execute("""
-                SELECT p.name, p.age, p.gender, p.race, p.address,
-                       b.booking_date, b.housing_facility, b.total_bond_amount, b.total_bail_amount
+                SELECT
+                    p.subject_id, p.name, p.age, p.gender, p.race, p.address,
+                    p.first_seen, p.last_seen, p.total_bookings,
+                    b.booking_date, b.housing_facility, b.bond_type,
+                    b.total_bond_amount, b.total_bail_amount, b.in_custody,
+                    b.booking_number,
+                    c.charge_number, c.description, c.charge_category,
+                    c.offense_date, c.disposition, c.disposition_date,
+                    c.sentence_length_raw, c.sentence_days, c.arresting_agency
                 FROM people p
                 JOIN bookings b ON p.subject_id = b.subject_id
-                WHERE b.in_custody = 1
+                LEFT JOIN charges c
+                    ON c.subject_id = b.subject_id
+                    AND c.booking_date = b.booking_date
+                ORDER BY p.name, b.booking_date DESC, c.charge_number
             """)
             writer.writerows(c.fetchall())
-            print(" -> Created current_inmates.csv")
+            print(" -> Created jail_master.csv")
     except Exception as e:
-        print(f"Error creating current_inmates.csv: {e}")
+        print(f"Error creating jail_master.csv: {e}")
 
-    # 2. Generate Daily Demographics Tracking File
+    # 2. Daily demographics: time series of the jail population composition
     try:
         with open('daily_demographics.csv', 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -464,19 +395,6 @@ def generate_spreadsheets(conn):
             print(" -> Created daily_demographics.csv")
     except Exception as e:
         print(f"Error creating daily_demographics.csv: {e}")
-
-    # 3. Generate Master Historical File
-    try:
-        with open('all_historical_people.csv', 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            c.execute("PRAGMA table_info(people)")
-            headers = [row[1] for row in c.fetchall()]
-            writer.writerow(headers)
-            c.execute("SELECT * FROM people")
-            writer.writerows(c.fetchall())
-            print(" -> Created all_historical_people.csv")
-    except Exception as e:
-        print(f"Error creating all_historical_people.csv: {e}")
 
 
 def scrape():
@@ -490,7 +408,7 @@ def scrape():
     errors = 0
     page = 1
     all_people_today = []
-    
+
     while True:
         print(f"Fetching roster page {page}...")
         try:
@@ -502,19 +420,19 @@ def scrape():
         table = soup.find("table")
         if not table:
             break
-        
+
         rows = table.find_all("tr")[1:]
         if not rows:
             break
-        
-        valid_rows_this_page = 0  
-        
+
+        valid_rows_this_page = 0
+
         for row in rows:
             roster_row = parse_roster_row(row)
             if not roster_row or not roster_row["href"]:
                 continue
-            
-            valid_rows_this_page += 1  
+
+            valid_rows_this_page += 1
             subject_id = roster_row["href"].split("/")[-1]
             try:
                 detail = parse_detail_page(roster_row["href"])
@@ -525,35 +443,29 @@ def scrape():
                     new_people += 1
                 save_person(conn, roster_row, detail)
                 total_scraped += 1
-                latest_booking_date = ""
-                if detail.get("bookings"):
-                    latest_booking_date = detail["bookings"][0].get("booking_date", "")
                 all_people_today.append({
                     "subject_id": subject_id,
                     "race": roster_row["race"],
                     "gender": roster_row["gender"],
-                    "multiple_bookings": roster_row["multiple_bookings"],
-                    "is_homeless": is_homeless(detail.get("address", "")),
-                    "is_out_of_county": is_out_of_county(detail.get("address", "")),
-                    "latest_booking_date": latest_booking_date
+                    "multiple_bookings": roster_row["multiple_bookings"]
                 })
             except Exception as e:
                 errors += 1
-        
+
         if valid_rows_this_page == 0:
             break
-            
+
         next_link = soup.find("a", string=lambda s: s and "next" in s.lower())
-        if not next_link or page >= 20:  
+        if not next_link or page >= 20:
             break
-            
+
         page += 1
         time.sleep(1)
-        
+
     if all_people_today:
         record_snapshot(conn, all_people_today)
     duration = (datetime.now() - start_time).total_seconds()
-    
+
     c = conn.cursor()
     c.execute("""
         INSERT INTO scrape_log
@@ -568,10 +480,9 @@ def scrape():
         errors, duration, ""
     ))
     conn.commit()
-    
-    # Trigger the CSV generator right before closing the database!
+
     generate_spreadsheets(conn)
-    
+
     conn.close()
     print(f"\nDone in {duration:.1f}s. {total_scraped} scraped, {new_people} new, {errors} errors.")
 
