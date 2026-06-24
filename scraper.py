@@ -6,16 +6,6 @@ import re
 import csv
 from datetime import datetime, date, timedelta
 
-# ----------------------------------------------------------------------
-# BACKFILL CONFIG
-# After the one-time backfill run completes, flip BACKFILL_MODE to False
-# to revert to the daily 7-day-window scrape.
-# ----------------------------------------------------------------------
-BACKFILL_MODE = True
-BACKFILL_START_DATE = date(2026, 1, 1)
-MAX_PAGES = 500 if BACKFILL_MODE else 20
-# ----------------------------------------------------------------------
-
 BASE_URL = "https://cad.kccda911.org/NewWorld.InmateInquiry/MI3913900"
 DB_FILE = "kalamazoo_jail.db"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -162,12 +152,9 @@ def get_field(soup, css_class):
 
 def get_roster_page(page_num):
     today = date.today()
-    if BACKFILL_MODE:
-        start = BACKFILL_START_DATE
-    else:
-        start = today - timedelta(days=7)
+    week_ago = (today - timedelta(days=7)).strftime("%m/%d/%Y")
     params = {
-        "BookingFromDate": start.strftime("%m/%d/%Y"),
+        "BookingFromDate": week_ago,
         "BookingToDate": today.strftime("%m/%d/%Y"),
         "Page": page_num
     }
@@ -412,9 +399,6 @@ def generate_spreadsheets(conn):
 
 def scrape():
     start_time = datetime.now()
-    if BACKFILL_MODE:
-        print(f"BACKFILL MODE: scraping from {BACKFILL_START_DATE} to {date.today()}")
-        print("This will take a while. Snapshot recording is disabled during backfill.")
     print(f"Starting scrape at {start_time}")
     conn = init_db()
     total_scraped = 0
@@ -472,15 +456,13 @@ def scrape():
             break
 
         next_link = soup.find("a", string=lambda s: s and "next" in s.lower())
-        if not next_link or page >= MAX_PAGES:
+        if not next_link or page >= 20:
             break
 
         page += 1
         time.sleep(1)
 
-    # Skip snapshot during backfill since the window is months wide, not a
-    # point-in-time look at who is currently in custody.
-    if all_people_today and not BACKFILL_MODE:
+    if all_people_today:
         record_snapshot(conn, all_people_today)
     duration = (datetime.now() - start_time).total_seconds()
 
@@ -495,8 +477,7 @@ def scrape():
         "success" if errors == 0 else "partial",
         total_scraped, new_people,
         new_bookings, updated_charges,
-        errors, duration,
-        "backfill" if BACKFILL_MODE else ""
+        errors, duration, ""
     ))
     conn.commit()
 
